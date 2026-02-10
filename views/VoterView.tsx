@@ -107,8 +107,14 @@ const VotingPanel: React.FC<{
                 <p className="text-white/80 text-xs font-medium drop-shadow-md">{film.subtitle}</p>
               </div>
 
-              <div className="w-full text-center scale-90 origin-center">
-                 <StarRating rating={rating} setRating={setRating} disabled={isLocked} />
+              <div className="w-full text-center">
+                 <StarRating 
+                    rating={rating} 
+                    setRating={setRating} 
+                    disabled={isLocked} 
+                    size={38} 
+                    gap="gap-2 sm:gap-4"
+                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3 w-full">
@@ -151,10 +157,10 @@ const VotingPanel: React.FC<{
                    onClick={handleVote}
                    disabled={!isFormValid || isLocked}
                    className={`
-                     w-full py-3.5 rounded-xl font-bold text-xs tracking-widest uppercase flex items-center justify-center gap-2
+                     w-full py-4 rounded-xl font-bold text-sm tracking-widest uppercase flex items-center justify-center gap-2
                      transition-all duration-300 shadow-xl border
                      ${isFormValid 
-                       ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-blue-500/30 border-blue-400/30 hover:brightness-110' 
+                       ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-blue-500/30 border-blue-400/30 hover:brightness-110' 
                        : 'bg-white/10 text-white/30 cursor-not-allowed border-white/5'}
                    `}
                  >

@@ -76,7 +76,7 @@ const VotingPanel: React.FC<{
   const isFormValid = rating > 0;
 
   return (
-    <div className={`relative w-full h-full min-h-[inherit] flex flex-col items-center justify-center overflow-hidden font-sans border-b md:border-b-0 md:border-r border-white/10 last:border-none transition-all duration-500 ${isLocked ? 'grayscale opacity-50 pointer-events-none' : ''}`}>
+    <div className={`relative w-full min-h-[inherit] flex flex-col items-center justify-center font-sans border-b md:border-b-0 md:border-r border-white/10 last:border-none transition-all duration-500 ${isLocked ? 'grayscale opacity-50 pointer-events-none' : ''}`}>
       <div className="absolute inset-0 z-0">
         <img 
           src={film.coverImage} 

@@ -1,6 +1,6 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Trophy, Home, RotateCcw } from 'lucide-react';
+import { Trophy, Home, RotateCcw, Check } from 'lucide-react';
 import { GlassCard } from './ui/GlassCard';
 import { FILMS } from '../constants';
 import { usePolling } from '../context/PollingContext';
@@ -8,6 +8,7 @@ import { usePolling } from '../context/PollingContext';
 export const ResultsDashboard: React.FC<{ isPresenter?: boolean }> = ({ isPresenter = false }) => {
   const { state, resetSession } = usePolling();
   const votes = state.votes;
+  const [showSplash, setShowSplash] = useState(false);
 
   const ranking = useMemo(() => {
     return FILMS.map(film => {
@@ -20,9 +21,53 @@ export const ResultsDashboard: React.FC<{ isPresenter?: boolean }> = ({ isPresen
 
   const winner = ranking[0];
 
+  if (showSplash) {
+      return (
+        <div className="w-full min-h-screen bg-black flex flex-col items-center justify-center p-6 relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-900/20 to-purple-900/20 animate-pulse pointer-events-none" />
+            
+            <motion.div 
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="relative z-10 max-w-2xl w-full"
+            >
+                <GlassCard className="p-12 flex flex-col items-center text-center space-y-8 border-blue-500/20 !bg-black/80 shadow-2xl">
+                     <div className="w-32 h-32 rounded-full bg-gradient-to-tr from-blue-500 to-purple-600 flex items-center justify-center shadow-[0_0_50px_rgba(59,130,246,0.5)]">
+                        <Trophy size={64} className="text-white" />
+                    </div>
+                    <div className="space-y-4">
+                        <h1 className="text-5xl md:text-7xl font-bold text-white tracking-tight">Thank You!</h1>
+                        <p className="text-xl md:text-2xl text-blue-200/60 font-light">The session has officially concluded.</p>
+                    </div>
+                    
+                    <div className="pt-8 flex flex-col gap-4 w-full items-center">
+                         <button 
+                             onClick={() => {
+                                 if(confirm("Reset session and start over?")) {
+                                     resetSession();
+                                     setShowSplash(false);
+                                 }
+                             }}
+                            className="px-8 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold uppercase tracking-widest transition-all w-full max-w-xs border border-white/10"
+                         >
+                            Start New Session
+                         </button>
+                         <button 
+                            onClick={() => setShowSplash(false)}
+                            className="text-xs text-white/20 hover:text-white transition-colors uppercase tracking-widest"
+                         >
+                            Back to Results
+                         </button>
+                    </div>
+                </GlassCard>
+            </motion.div>
+        </div>
+      );
+  }
+
   return (
     <div className="w-full min-h-screen bg-black text-white p-4 md:p-8 flex flex-col items-center relative">
-      <div className="max-w-2xl w-full space-y-8 pb-12">
+      <div className="max-w-2xl w-full space-y-8 pb-32">
         <div className="text-center space-y-2 mt-8">
            <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">Final Results</h2>
            <p className="text-white/60">The audience has spoken</p>
@@ -79,16 +124,27 @@ export const ResultsDashboard: React.FC<{ isPresenter?: boolean }> = ({ isPresen
             ))}
         </div>
         
-        <div className="text-center pt-8 pb-12">
+        <div className="text-center pt-8 flex flex-col md:flex-row gap-4 justify-center items-center">
              {isPresenter ? (
-                 <button 
-                    onClick={() => {
-                        if(confirm("WARNING: This will RESET the entire session. Are you sure?")) resetSession();
-                    }} 
-                    className="px-6 py-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-colors uppercase tracking-widest font-bold border border-red-500/20"
-                 >
-                     Reset Session
-                 </button>
+                 <>
+                    <button 
+                        onClick={() => setShowSplash(true)}
+                        className="w-full md:w-auto px-8 py-4 rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white shadow-lg shadow-blue-900/20 transition-all hover:scale-105 active:scale-95 font-bold uppercase tracking-widest flex items-center justify-center gap-3"
+                    >
+                        <Check size={20} />
+                        Finish Session
+                    </button>
+
+                     <button 
+                        onClick={() => {
+                            if(confirm("WARNING: This will RESET the entire session. Are you sure?")) resetSession();
+                        }} 
+                        className="w-full md:w-auto px-8 py-4 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-colors uppercase tracking-widest font-bold border border-red-500/20 flex items-center justify-center gap-3"
+                     >
+                         <RotateCcw size={20} />
+                         Restart Session
+                     </button>
+                 </>
              ) : (
                 <button onClick={() => window.location.reload()} className="text-xs text-white/30 hover:text-white transition-colors uppercase tracking-widest">
                     Start New Session
@@ -118,7 +174,7 @@ export const ResultsDashboard: React.FC<{ isPresenter?: boolean }> = ({ isPresen
                     title="Reset Session"
                 >
                     <RotateCcw size={18} />
-                    <span className="text-xs font-bold uppercase tracking-wider">Reset Session</span>
+                    <span className="text-xs font-bold uppercase tracking-wider">Reset</span>
                 </button>
             </GlassCard>
          </div>

@@ -72,11 +72,21 @@ export const PollingProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, []);
 
   // Action: Presenter changes both films. 
-  // CHANGED: Does NOT auto-start timer. Sets to locked.
+  // CHANGED: Checks for end of list to trigger finish state
   const nextPair = useCallback(() => {
     const leftIndex = FILMS.findIndex(f => f.id === state.leftFilmId);
     const rightIndex = FILMS.findIndex(f => f.id === state.rightFilmId);
     
+    // Check if we are at the end of the list
+    if (leftIndex + 2 >= FILMS.length) {
+        update(ref(db, 'session'), {
+            isFinished: true,
+            isLocked: true,
+            roundEndsAt: null
+        });
+        return;
+    }
+
     const nextLeftIndex = (leftIndex + 2) % FILMS.length;
     const nextRightIndex = (rightIndex + 2) % FILMS.length;
 
@@ -84,12 +94,12 @@ export const PollingProvider: React.FC<{ children: React.ReactNode }> = ({ child
         leftFilmId: FILMS[nextLeftIndex].id,
         rightFilmId: FILMS[nextRightIndex].id,
         roundEndsAt: null, // Reset timer
-        isLocked: true     // Lock voting until Presenter clicks Start
+        isLocked: true,     // Lock voting until Presenter clicks Start
+        isFinished: false
     });
   }, [state.leftFilmId, state.rightFilmId]);
 
   // Action: Jump to next category
-  // CHANGED: Does NOT auto-start timer. Sets to locked.
   const jumpToNextCategory = useCallback(() => {
     const currentCategory = leftFilm.category;
     let nextIndex = FILMS.findIndex(f => f.id === state.leftFilmId);
@@ -109,7 +119,8 @@ export const PollingProvider: React.FC<{ children: React.ReactNode }> = ({ child
         leftFilmId: FILMS[nextIndex].id,
         rightFilmId: FILMS[nextIndex + 1]?.id || FILMS[0].id,
         roundEndsAt: null, // Reset timer
-        isLocked: true     // Lock voting
+        isLocked: true,     // Lock voting
+        isFinished: false
     });
 
   }, [state.leftFilmId, leftFilm.category]);
@@ -123,6 +134,7 @@ export const PollingProvider: React.FC<{ children: React.ReactNode }> = ({ child
         votes: null,
         isLocked: true, // Start locked
         roundEndsAt: null,
+        isFinished: false // Reset
     }).catch(err => console.error("Reset failed", err));
   }, []);
 

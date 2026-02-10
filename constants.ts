@@ -139,4 +139,5 @@ export const INITIAL_STATE = {
   votes: [],
   isLocked: false,
   roundEndsAt: null,
+  isFinished: false,
 };

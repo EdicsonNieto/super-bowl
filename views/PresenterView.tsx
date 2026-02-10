@@ -4,7 +4,9 @@ import { Play, Users, Check, X, ScanLine, Clock, ArrowRight, BarChart2, RotateCc
 import { usePolling } from '../context/PollingContext';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Sparkline } from '../components/ui/Sparkline';
+import { ResultsDashboard } from '../components/ResultsDashboard';
 import { Film } from '../types';
+import { FILMS } from '../constants';
 
 interface DashboardPanelProps {
   film: Film;
@@ -209,6 +211,11 @@ const PresenterView: React.FC = () => {
     return typeof state.roundEndsAt === 'number' && state.roundEndsAt > 0;
   }, [state.roundEndsAt]);
 
+  const isLastPair = useMemo(() => {
+    const currentIndex = FILMS.findIndex(f => f.id === leftFilm.id);
+    return currentIndex + 2 >= FILMS.length;
+  }, [leftFilm.id]);
+
   useEffect(() => {
       // Logic: If round is NOT started (undefined/null), reset timer and return
       if (!isRoundStarted) {
@@ -271,6 +278,8 @@ const PresenterView: React.FC = () => {
           nextPair();
       }
   };
+
+  if (state.isFinished) return <ResultsDashboard isPresenter />;
 
   return (
     <div className="w-full min-h-screen bg-black text-white font-sans flex flex-col md:flex-row relative">
@@ -376,8 +385,14 @@ const PresenterView: React.FC = () => {
                     }
                 `}
             >
-                {!isRoundStarted ? <Play size={20} fill="currentColor" /> : <ArrowRight size={20} />}
-                <span>{!isRoundStarted ? 'Start Round (2:00)' : 'Next Pair'}</span>
+                {!isRoundStarted ? (
+                    <Play size={20} fill="currentColor" />
+                ) : isLastPair ? (
+                    <BarChart2 size={20} />
+                ) : (
+                    <ArrowRight size={20} />
+                )}
+                <span>{!isRoundStarted ? 'Start Round (2:00)' : isLastPair ? 'Show Results' : 'Next Pair'}</span>
             </button>
         </GlassCard>
      </div>

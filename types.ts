@@ -28,6 +28,7 @@ export interface PollingState {
   votes: Vote[];
   isLocked: boolean;
   roundEndsAt: number | null; // Timestamp when the current round ends
+  isFinished: boolean; // Indicates if the session has reached the end
 }
 
 export interface PollingContextType {

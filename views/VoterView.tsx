@@ -1,13 +1,51 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, X, MessageSquare, Lock, ArrowRight, Trophy, BarChart2 } from 'lucide-react';
+import { Check, X, MessageSquare, Lock, ArrowRight, Trophy, BarChart2, Clock } from 'lucide-react';
 import { usePolling } from '../context/PollingContext';
 import { GlassCard } from '../components/ui/GlassCard';
 import { StarRating } from '../components/ui/StarRating';
 import { Film, Vote } from '../types';
-import { FILMS } from '../constants';
+import { FILMS, ANIMALS } from '../constants';
 
-const VotingPanel: React.FC<{ film: Film; onSubmit: (vote: any) => void; onVoteSuccess: () => void }> = ({ film, onSubmit, onVoteSuccess }) => {
+// Helper for formatting
+const formatTime = (seconds: number) => {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+};
+
+// Identity Helper
+interface VoterIdentity {
+    name: string;
+    icon: string;
+    kanji: string;
+    id: string;
+}
+
+const getVoterIdentity = (): VoterIdentity => {
+    const stored = localStorage.getItem('lumina_voter_identity');
+    if (stored) return JSON.parse(stored);
+
+    const randomAnimal = ANIMALS[Math.floor(Math.random() * ANIMALS.length)];
+    const randomSuffix = Math.floor(100 + Math.random() * 900); // 3 digit suffix
+    const identity = {
+        name: randomAnimal.name,
+        icon: randomAnimal.icon,
+        kanji: randomAnimal.kanji,
+        id: `#${randomSuffix}`
+    };
+    
+    localStorage.setItem('lumina_voter_identity', JSON.stringify(identity));
+    return identity;
+};
+
+const VotingPanel: React.FC<{ 
+  film: Film; 
+  onSubmit: (vote: any) => void; 
+  onVoteSuccess: () => void; 
+  isLocked: boolean;
+  timeLeft: number | null;
+}> = ({ film, onSubmit, onVoteSuccess, isLocked, timeLeft }) => {
   const [rating, setRating] = useState(0);
   const [sentiment, setSentiment] = useState<'shortlist' | 'reject' | null>(null);
   const [comment, setComment] = useState('');
@@ -23,12 +61,14 @@ const VotingPanel: React.FC<{ film: Film; onSubmit: (vote: any) => void; onVoteS
 
   const handleVote = () => {
     if (rating === 0) return;
+    const identity = getVoterIdentity();
     onSubmit({
       filmId: film.id,
       stars: rating,
       sentiment,
       comment,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      voter: identity // Attach identity to vote
     });
     setHasVoted(true);
     onVoteSuccess();
@@ -37,7 +77,7 @@ const VotingPanel: React.FC<{ film: Film; onSubmit: (vote: any) => void; onVoteS
   const isFormValid = rating > 0;
 
   return (
-    <div className="relative w-full h-full min-h-[inherit] flex flex-col items-center justify-center overflow-hidden font-sans border-b md:border-b-0 md:border-r border-white/10 last:border-none">
+    <div className={`relative w-full h-full min-h-[inherit] flex flex-col items-center justify-center overflow-hidden font-sans border-b md:border-b-0 md:border-r border-white/10 last:border-none transition-all duration-500 ${isLocked ? 'grayscale opacity-50 pointer-events-none' : ''}`}>
       
       {/* Background Image with Overlay */}
       <div className="absolute inset-0 z-0">
@@ -74,7 +114,7 @@ const VotingPanel: React.FC<{ film: Film; onSubmit: (vote: any) => void; onVoteS
 
               {/* Star Rating */}
               <div className="w-full text-center scale-90 origin-center">
-                 <StarRating rating={rating} setRating={setRating} />
+                 <StarRating rating={rating} setRating={setRating} disabled={isLocked} />
               </div>
 
               {/* Action Cards */}
@@ -85,7 +125,7 @@ const VotingPanel: React.FC<{ film: Film; onSubmit: (vote: any) => void; onVoteS
                   onClick={() => setSentiment('shortlist')}
                 >
                   <Check className={`w-5 h-5 ${sentiment === 'shortlist' ? 'text-white' : 'text-white/50'}`} />
-                  <span className={`text-[10px] font-bold tracking-wider ${sentiment === 'shortlist' ? 'text-white' : 'text-white/60'}`}>SHORTLIST</span>
+                  <span className={`text-[10px] font-bold tracking-wider ${sentiment === 'shortlist' ? 'text-white' : 'text-white/60'}`}>Short Listed</span>
                 </GlassCard>
 
                 <GlassCard 
@@ -94,7 +134,7 @@ const VotingPanel: React.FC<{ film: Film; onSubmit: (vote: any) => void; onVoteS
                   onClick={() => setSentiment('reject')}
                 >
                   <X className={`w-5 h-5 ${sentiment === 'reject' ? 'text-white' : 'text-white/50'}`} />
-                  <span className={`text-[10px] font-bold tracking-wider ${sentiment === 'reject' ? 'text-white' : 'text-white/60'}`}>REJECT</span>
+                  <span className={`text-[10px] font-bold tracking-wider ${sentiment === 'reject' ? 'text-white' : 'text-white/60'}`}>Reject</span>
                 </GlassCard>
               </div>
 
@@ -108,6 +148,7 @@ const VotingPanel: React.FC<{ film: Film; onSubmit: (vote: any) => void; onVoteS
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
                   placeholder="Quick thought..."
+                  disabled={isLocked}
                   className="w-full bg-white/10 border border-white/20 rounded-xl py-3 pl-10 pr-4 text-sm text-white placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-400/50 focus:border-blue-400/50 backdrop-blur-md transition-all shadow-lg"
                 />
               </div>
@@ -117,7 +158,7 @@ const VotingPanel: React.FC<{ film: Film; onSubmit: (vote: any) => void; onVoteS
                  <motion.button
                    whileTap={{ scale: 0.98 }}
                    onClick={handleVote}
-                   disabled={!isFormValid}
+                   disabled={!isFormValid || isLocked}
                    className={`
                      w-full py-3.5 rounded-xl font-bold text-xs tracking-widest uppercase flex items-center justify-center gap-2
                      transition-all duration-300 shadow-xl border
@@ -126,7 +167,9 @@ const VotingPanel: React.FC<{ film: Film; onSubmit: (vote: any) => void; onVoteS
                        : 'bg-white/10 text-white/30 cursor-not-allowed border-white/5'}
                    `}
                  >
-                   <span>Submit Vote</span>
+                   <span className="flex items-center gap-2">
+                     Submit Vote 
+                   </span>
                    <Lock size={12} className={isFormValid ? "opacity-50" : "opacity-0"} />
                  </motion.button>
               </div>
@@ -272,28 +315,51 @@ const VoterView: React.FC = () => {
   const [leftVoted, setLeftVoted] = useState(false);
   const [rightVoted, setRightVoted] = useState(false);
   const [viewState, setViewState] = useState<'voting' | 'thanks' | 'results'>('voting');
+  const [identity, setIdentity] = useState<VoterIdentity | null>(null);
+  
+  // Timer State
+  const [timeLeft, setTimeLeft] = useState<number | null>(null);
+
+  // Initialize Identity on Mount
+  useEffect(() => {
+      setIdentity(getVoterIdentity());
+  }, []);
+
+  useEffect(() => {
+    if (!state.roundEndsAt) {
+      setTimeLeft(null); // Reset when null
+      return;
+    }
+
+    const interval = setInterval(() => {
+        const remaining = Math.max(0, Math.ceil((state.roundEndsAt! - Date.now()) / 1000));
+        setTimeLeft(remaining);
+        if (remaining <= 0) {
+            clearInterval(interval);
+        }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [state.roundEndsAt]);
+
+  const isLocked = timeLeft === 0;
 
   // Reset voting status when films change (new round)
   useEffect(() => {
     setLeftVoted(false);
-  }, [leftFilm.id]);
-
-  useEffect(() => {
     setRightVoted(false);
-  }, [rightFilm.id]);
+    // If films change, likely new round, so unlock view if we were locked locally
+  }, [leftFilm.id, rightFilm.id]);
 
   const allVoted = leftVoted && rightVoted;
 
   const isLastPair = useMemo(() => {
-     // Identify if the current left film is the last possible left film in the sorted pairs
      const idx = FILMS.findIndex(f => f.id === leftFilm.id);
      return idx >= FILMS.length - 2;
   }, [leftFilm.id]);
 
-  // Calculate dynamic button label for next round
   const nextActionLabel = useMemo(() => {
     if (isLastPair) return "Finish Voting";
-    
     const currentIndex = FILMS.findIndex(f => f.id === leftFilm.id);
     const nextIndex = (currentIndex + 2) % FILMS.length;
     const nextCategory = FILMS[nextIndex].category;
@@ -314,20 +380,72 @@ const VoterView: React.FC = () => {
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen w-full bg-black relative">
-      {/* 
-        Mobile: Stacks vertically. Each panel takes at least 50% of the viewport height. 
-        Desktop: Side-by-side, full height.
-      */}
+
+        {/* Identity Badge (Top Left) */}
+        {identity && (
+            <div className="fixed top-2 left-2 z-[60] flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 shadow-lg pointer-events-none">
+                <span className="text-lg">{identity.icon}</span>
+                <div className="flex flex-col leading-none">
+                    <span className="text-[10px] text-white/50 font-bold uppercase">{identity.name}</span>
+                    <span className="text-[8px] text-white/30 font-mono tracking-widest">{identity.id}</span>
+                </div>
+            </div>
+        )}
+
+        {/* Top Countdown Bar for Voter */}
+        {timeLeft !== null && timeLeft > 0 && (
+             <div className="fixed top-0 inset-x-0 z-50 flex justify-center pt-4 pointer-events-none">
+                <div className={`
+                    flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold tracking-widest border backdrop-blur-md shadow-2xl transition-all
+                    ${timeLeft <= 10 ? 'bg-red-500/80 border-red-500 text-white animate-pulse' : 'bg-black/60 border-white/20 text-white'}
+                `}>
+                    <Clock size={12} />
+                    <span className="font-mono">{formatTime(timeLeft)}</span>
+                </div>
+            </div>
+        )}
+      
+      {/* Locked Overlay */}
+      <AnimatePresence>
+        {isLocked && (
+             <motion.div 
+             initial={{ opacity: 0 }}
+             animate={{ opacity: 1 }}
+             exit={{ opacity: 0 }}
+             className="absolute inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-6"
+           >
+              <GlassCard 
+                 className="w-full max-w-sm p-8 flex flex-col items-center text-center space-y-4 !border-white/10 !bg-white/5"
+              >
+                  <Lock size={48} className="text-white/30 mb-2" />
+                  <h2 className="text-xl font-bold text-white">Voting Closed</h2>
+                  <p className="text-white/50 text-sm">Time's up for this round. Waiting for presenter...</p>
+              </GlassCard>
+           </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="w-full md:w-1/2 min-h-[50vh] flex-1 relative">
-        <VotingPanel film={leftFilm} onSubmit={submitVote} onVoteSuccess={() => setLeftVoted(true)} />
+        <VotingPanel 
+            film={leftFilm} 
+            onSubmit={submitVote} 
+            onVoteSuccess={() => setLeftVoted(true)} 
+            isLocked={isLocked || leftVoted} 
+            timeLeft={timeLeft}
+        />
       </div>
       <div className="w-full md:w-1/2 min-h-[50vh] flex-1 relative">
-         <VotingPanel film={rightFilm} onSubmit={submitVote} onVoteSuccess={() => setRightVoted(true)} />
+         <VotingPanel 
+            film={rightFilm} 
+            onSubmit={submitVote} 
+            onVoteSuccess={() => setRightVoted(true)} 
+            isLocked={isLocked || rightVoted}
+            timeLeft={timeLeft}
+         />
       </div>
 
-      {/* "Go to Play Type X" or "Finish" Overlay Button */}
       <AnimatePresence>
-        {allVoted && (
+        {allVoted && !isLocked && (
           <motion.div 
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -342,20 +460,16 @@ const VoterView: React.FC = () => {
                    <p className="text-white/50">All votes have been recorded successfully.</p>
                 </div>
                 
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={handleNext}
-                  className={`
-                    w-full py-4 rounded-xl font-bold text-white text-sm tracking-widest uppercase shadow-lg flex items-center justify-center gap-2 group
-                    ${isLastPair 
-                        ? 'bg-gradient-to-r from-green-500 to-emerald-600 shadow-green-500/25' 
-                        : 'bg-gradient-to-r from-blue-600 to-indigo-600 shadow-blue-500/25'}
-                  `}
-                >
-                  <span>{nextActionLabel}</span>
-                  {isLastPair ? <Check size={16} /> : <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />}
-                </motion.button>
+                {timeLeft !== null && timeLeft > 0 && (
+                  <div className="py-4 flex flex-col items-center animate-pulse">
+                      <div className="text-4xl font-mono font-bold text-blue-400">
+                          {formatTime(timeLeft)}
+                      </div>
+                      <div className="text-[10px] text-white/30 uppercase tracking-widest mt-1">Time Remaining</div>
+                  </div>
+                )}
+                
+                <div className="text-sm text-white/30 italic">Waiting for presenter...</div>
              </GlassCard>
           </motion.div>
         )}

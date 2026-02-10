@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { PollingProvider } from './context/PollingContext';
 import VoterView from './views/VoterView';
 import PresenterView from './views/PresenterView';
-import { Users, Presentation } from 'lucide-react';
+import { Users, Presentation, ScanLine } from 'lucide-react';
 import { GlassCard } from './components/ui/GlassCard';
 
 // Simple Hash Router Implementation
@@ -29,9 +29,19 @@ const App: React.FC = () => {
 };
 
 const LandingSelection: React.FC = () => {
+  const [qrUrl, setQrUrl] = useState('');
+
+  useEffect(() => {
+    const voteUrl = window.location.origin + window.location.pathname + '#/vote';
+    setQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=150x150&bgcolor=000000&color=ffffff&data=${encodeURIComponent(voteUrl)}`);
+  }, []);
+
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center p-4">
-      <div className="max-w-4xl w-full grid grid-cols-1 md:grid-cols-2 gap-8">
+    <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4 relative overflow-hidden">
+       {/* Background Ambient */}
+       <div className="absolute inset-0 bg-gradient-to-tr from-blue-900/20 to-purple-900/20 animate-pulse pointer-events-none" />
+
+      <div className="max-w-4xl w-full grid grid-cols-1 md:grid-cols-2 gap-8 relative z-10">
         
         <GlassCard 
             hoverEffect 
@@ -62,6 +72,18 @@ const LandingSelection: React.FC = () => {
         </GlassCard>
 
       </div>
+
+      {/* QR Code - Bottom Middle */}
+      <div className="mt-12 flex flex-col items-center gap-3 opacity-80 hover:opacity-100 transition-opacity">
+        <div className="p-2 bg-white rounded-xl shadow-2xl">
+            {qrUrl && <img src={qrUrl} alt="Scan to Vote" className="w-32 h-32" />}
+        </div>
+        <div className="flex items-center gap-2 text-white/50 text-xs tracking-widest uppercase">
+            <ScanLine size={14} />
+            <span>Scan to Join Session</span>
+        </div>
+      </div>
+
     </div>
   );
 };

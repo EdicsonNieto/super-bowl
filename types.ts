@@ -14,13 +14,20 @@ export interface Vote {
   sentiment: 'shortlist' | 'reject' | null;
   comment: string;
   timestamp: number;
+  voter?: {
+    name: string;
+    icon: string;
+    kanji: string;
+    id: string;
+  };
 }
 
 export interface PollingState {
   leftFilmId: string;
   rightFilmId: string;
   votes: Vote[];
-  isLocked: boolean; // Not used in this version but good for future
+  isLocked: boolean;
+  roundEndsAt: number | null; // Timestamp when the current round ends
 }
 
 export interface PollingContextType {
@@ -30,6 +37,8 @@ export interface PollingContextType {
   submitVote: (vote: Vote) => void;
   nextFilm: (side: 'left' | 'right') => void;
   nextPair: () => void;
+  startRound: () => void;
+  jumpToNextCategory: () => void;
   resetSession: () => void;
   isConnected: boolean;
 }

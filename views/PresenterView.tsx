@@ -1,6 +1,6 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, TrendingUp, Users, ThumbsUp, Star, MessageSquare, Check, X, Smartphone, ScanLine, Wifi } from 'lucide-react';
+import { Play, Users, ThumbsUp, Star, Check, X, ScanLine, Clock, ArrowRight, BarChart2, RotateCcw, Home, Timer } from 'lucide-react';
 import { usePolling } from '../context/PollingContext';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Sparkline } from '../components/ui/Sparkline';
@@ -27,11 +27,15 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ film, votes, onNext, si
     return (total / currentVotes.length).toFixed(1);
   }, [currentVotes]);
 
-  const sentimentScore = useMemo(() => {
-    if (currentVotes.length === 0) return 0;
-    const positives = currentVotes.filter(v => v.sentiment === 'shortlist').length;
-    return Math.round((positives / currentVotes.length) * 100);
-  }, [currentVotes]);
+  const shortlistCount = useMemo(() => 
+    currentVotes.filter(v => v.sentiment === 'shortlist').length,
+    [currentVotes]
+  );
+
+  const rejectCount = useMemo(() => 
+    currentVotes.filter(v => v.sentiment === 'reject').length,
+    [currentVotes]
+  );
 
   const sparklineData = useMemo(() => {
       return currentVotes.map((v, i) => ({ index: i, value: v.stars }));
@@ -69,30 +73,32 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ film, votes, onNext, si
                 </h2>
                 <p className="text-white/70 text-xs md:text-sm drop-shadow">{film.subtitle}</p>
             </div>
-            <button 
-                onClick={onNext}
-                className="shrink-0 p-3 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 backdrop-blur-md transition-all hover:scale-105 active:scale-95 shadow-lg"
-            >
-                <Play size={20} fill="currentColor" className="text-white ml-1"/>
-            </button>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
-            <GlassCard className="p-4 flex flex-col justify-between">
-                <div className="flex justify-between items-start mb-2">
+        {/* Stats Grid - 3 Columns */}
+        <div className="grid grid-cols-3 gap-3 mb-6">
+            <GlassCard className="p-3 flex flex-col justify-between h-20">
+                <div className="flex justify-between items-start mb-1">
                     <Users size={16} className="text-blue-300" />
-                    <span className="text-2xl font-bold text-white drop-shadow-md">{currentVotes.length}</span>
+                    <span className="text-xl font-bold text-white drop-shadow-md">{currentVotes.length}</span>
                 </div>
-                <span className="text-xs text-white/60 uppercase tracking-wider font-medium">Total Votes</span>
+                <span className="text-[10px] text-white/60 uppercase tracking-wider font-medium">Total</span>
             </GlassCard>
             
-            <GlassCard className="p-4 flex flex-col justify-between">
-                <div className="flex justify-between items-start mb-2">
-                    <ThumbsUp size={16} className="text-green-400" />
-                    <span className="text-2xl font-bold text-white drop-shadow-md">{sentimentScore}%</span>
+            <GlassCard className="p-3 flex flex-col justify-between h-20 !bg-green-500/10 border-green-500/20">
+                <div className="flex justify-between items-start mb-1">
+                    <Check size={16} className="text-green-400" />
+                    <span className="text-xl font-bold text-white drop-shadow-md">{shortlistCount}</span>
                 </div>
-                <span className="text-xs text-white/60 uppercase tracking-wider font-medium">Approval</span>
+                <span className="text-[10px] text-green-200/60 uppercase tracking-wider font-medium">Short Listed</span>
+            </GlassCard>
+
+            <GlassCard className="p-3 flex flex-col justify-between h-20 !bg-red-500/10 border-red-500/20">
+                <div className="flex justify-between items-start mb-1">
+                    <X size={16} className="text-red-400" />
+                    <span className="text-xl font-bold text-white drop-shadow-md">{rejectCount}</span>
+                </div>
+                <span className="text-[10px] text-red-200/60 uppercase tracking-wider font-medium">Reject</span>
             </GlassCard>
         </div>
 
@@ -130,24 +136,61 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ film, votes, onNext, si
                             layout
                             className="bg-white/10 border border-white/10 p-3 rounded-lg shadow-sm"
                         >
-                            <div className="flex justify-between items-start mb-1">
+                            {/* Vote Header: Identity + Timestamp */}
+                            <div className="flex justify-between items-start mb-2 pb-2 border-b border-white/5">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-7 h-7 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-sm shadow-inner">
+                                        {vote.voter?.icon || '👤'}
+                                    </div>
+                                    <div className="flex flex-col leading-none justify-center">
+                                        <div className="flex items-baseline gap-1">
+                                            <span className="text-[11px] font-bold text-blue-200">
+                                                {vote.voter?.name || 'Anonymous'}
+                                            </span>
+                                            {vote.voter?.kanji && (
+                                                <span className="text-[9px] text-white/30">{vote.voter.kanji}</span>
+                                            )}
+                                        </div>
+                                        {vote.voter?.id && (
+                                            <span className="text-[9px] text-white/40 font-mono tracking-wider">
+                                                {vote.voter.id}
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                                <span className="text-[9px] text-white/30 font-mono mt-1">
+                                    {new Date(vote.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'})}
+                                </span>
+                            </div>
+
+                            {/* Vote Content: Stars + Status */}
+                            <div className="flex justify-between items-center mb-1">
                                 <div className="flex gap-0.5">
                                     {[...Array(vote.stars)].map((_, i) => (
-                                        <Star key={i} size={8} fill="currentColor" className="text-blue-400" />
+                                        <Star key={i} size={10} fill="currentColor" className="text-blue-400" />
                                     ))}
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <span className="text-[10px] text-white/40 font-mono">
-                                        {new Date(vote.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'})}
-                                    </span>
-                                    {vote.sentiment === 'shortlist' && <Check size={10} className="text-green-400" />}
-                                    {vote.sentiment === 'reject' && <X size={10} className="text-red-400" />}
+                                    {vote.sentiment === 'shortlist' && (
+                                        <div className="flex items-center gap-1 bg-green-500/10 px-1.5 py-0.5 rounded border border-green-500/20">
+                                            <Check size={10} className="text-green-400" />
+                                            <span className="text-[9px] font-bold text-green-300 uppercase tracking-wider">Shortlist</span>
+                                        </div>
+                                    )}
+                                    {vote.sentiment === 'reject' && (
+                                        <div className="flex items-center gap-1 bg-red-500/10 px-1.5 py-0.5 rounded border border-red-500/20">
+                                            <X size={10} className="text-red-400" />
+                                            <span className="text-[9px] font-bold text-red-300 uppercase tracking-wider">Reject</span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
+                            
+                            {/* Comment */}
                             {vote.comment ? (
-                                <p className="text-xs text-white font-medium leading-snug drop-shadow-sm">"{vote.comment}"</p>
+                                <p className="text-xs text-white font-medium leading-snug drop-shadow-sm mt-1">"{vote.comment}"</p>
                             ) : (
-                                <p className="text-[10px] text-white/40 italic">Voted without comment</p>
+                                <p className="text-[10px] text-white/20 italic mt-1">Voted without comment</p>
                             )}
                         </motion.div>
                     ))}
@@ -165,57 +208,131 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ film, votes, onNext, si
   );
 };
 
-const JoinWidget: React.FC = () => {
-    // Robustly get base URL (strip existing hash if present)
-    const baseUrl = window.location.href.split('#')[0];
-    const voteUrl = `${baseUrl}#/vote`;
-    
-    // Generate QR Code
-    const qrImage = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(voteUrl)}&bgcolor=ffffff&color=000000&margin=10`;
-
-    return (
-        <motion.div 
-            initial={{ y: 200, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 1, type: 'spring', damping: 20 }}
-            className="fixed bottom-0 left-0 right-0 z-50 flex justify-center pb-8 pointer-events-none"
-        >
-            <div className="pointer-events-auto">
-                <GlassCard className="p-4 flex flex-col items-center gap-3 !bg-black/90 !backdrop-blur-2xl border-white/20 shadow-[0_0_50px_rgba(0,0,0,0.8)] rounded-3xl">
-                    <div className="bg-white p-2 rounded-2xl shadow-inner">
-                        <img src={qrImage} alt="Scan to Vote" className="w-56 h-56 object-contain" />
-                    </div>
-                    <div className="text-center space-y-1">
-                        <h3 className="text-white font-bold text-lg tracking-tight">Scan to Vote</h3>
-                        <div className="flex items-center justify-center gap-2 text-xs text-blue-300 font-mono">
-                            <Smartphone size={12} />
-                            <span>No app download required</span>
-                        </div>
-                    </div>
-                </GlassCard>
-            </div>
-        </motion.div>
-    );
-};
-
 const PresenterView: React.FC = () => {
-  const { leftFilm, rightFilm, state, nextFilm, isConnected } = usePolling();
+  const { leftFilm, rightFilm, state, nextFilm, nextPair, startRound, jumpToNextCategory, resetSession, isConnected } = usePolling();
+  
+  // Local Timer State
+  const [timeLeft, setTimeLeft] = useState<number | null>(null);
+  const [showEndModal, setShowEndModal] = useState(false);
+  const [qrUrl, setQrUrl] = useState('');
+
+  // Sync Timer with Context
+  useEffect(() => {
+      if (!state.roundEndsAt) {
+          setTimeLeft(null);
+          return;
+      }
+
+      const interval = setInterval(() => {
+          const remaining = Math.max(0, Math.ceil((state.roundEndsAt! - Date.now()) / 1000));
+          setTimeLeft(remaining);
+          
+          if (remaining <= 0) {
+              clearInterval(interval);
+              setShowEndModal(true); // Trigger modal when time hits 0
+          } else {
+              setShowEndModal(false); // Ensure modal is closed if timer resets
+          }
+      }, 1000);
+
+      return () => clearInterval(interval);
+  }, [state.roundEndsAt]);
+
+  // Generate QR Code
+  useEffect(() => {
+      const voteUrl = window.location.origin + window.location.pathname + '#/vote';
+      // Increased size to 300x300 for better resolution when displayed large
+      setQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=300x300&bgcolor=000000&color=ffffff&data=${encodeURIComponent(voteUrl)}`);
+  }, []);
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const handleNextPlayType = () => {
+      jumpToNextCategory();
+      setShowEndModal(false);
+  };
+
+  // State Derivation
+  // Round Started: Timer is running (or ended at 0)
+  // Waiting: Timer is null
+  const isRoundStarted = state.roundEndsAt !== null;
+  const isRoundActive = timeLeft !== null && timeLeft > 0;
+  
+  const handleMainAction = () => {
+      if (!isRoundStarted) {
+          startRound();
+      } else {
+          // If round is running or finished, Next Pair moves to next and resets timer (stops)
+          nextPair();
+      }
+  };
 
   return (
     <div className="w-full min-h-screen bg-black text-white font-sans flex flex-col md:flex-row relative">
       
-      {/* Connection Status Indicator */}
-      <div className="absolute top-0 inset-x-0 z-50 flex justify-center pt-2 pointer-events-none">
-          <div className={`
-              flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase border backdrop-blur-md shadow-xl transition-colors duration-500
-              ${isConnected 
-                  ? 'bg-green-500/20 border-green-500/30 text-green-400' 
-                  : 'bg-red-500/20 border-red-500/30 text-red-400'}
-          `}>
-              <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-400 animate-pulse' : 'bg-red-500'}`} />
-              {isConnected ? 'Live Sync Active' : 'Connecting...'}
-          </div>
-      </div>
+      {/* Timer Bar */}
+      {timeLeft !== null && timeLeft > 0 && (
+         <div className="absolute top-0 inset-x-0 z-50 flex justify-center pt-2 pointer-events-none">
+            <div className={`
+                flex items-center gap-3 px-6 py-2 rounded-b-2xl text-sm font-bold tracking-widest border-b border-x backdrop-blur-md shadow-2xl transition-all
+                ${timeLeft <= 10 ? 'bg-red-500/80 border-red-500 text-white animate-pulse' : 'bg-black/60 border-white/20 text-white'}
+            `}>
+                <Clock size={16} />
+                <span className="font-mono text-lg">{formatTime(timeLeft)}</span>
+            </div>
+        </div>
+      )}
+
+      {/* End of Round Modal */}
+      <AnimatePresence>
+        {showEndModal && (
+            <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 z-[100] bg-black/80 backdrop-blur-md flex items-center justify-center p-8"
+            >
+                <GlassCard className="w-full max-w-2xl p-10 flex flex-col items-center text-center space-y-8 !bg-black/90 !border-white/20 shadow-2xl">
+                    <div className="space-y-2">
+                        <div className="text-blue-400 font-bold tracking-widest uppercase text-sm">Round Complete</div>
+                        <h2 className="text-4xl font-bold text-white">Time's Up!</h2>
+                        <p className="text-white/60 text-lg">The voting window for this pair has closed.</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+                         {/* Show Results (Closes Modal to reveal dashboard) */}
+                        <button 
+                            onClick={() => setShowEndModal(false)}
+                            className="group p-6 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all flex flex-col items-center gap-4"
+                        >
+                            <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 group-hover:scale-110 transition-transform">
+                                <BarChart2 size={24} />
+                            </div>
+                            <div className="text-lg font-bold">Show Results</div>
+                            <div className="text-xs text-white/40">Review the data on the dashboard</div>
+                        </button>
+
+                        {/* Go to Next Play Type */}
+                        <button 
+                             onClick={handleNextPlayType}
+                             className="group p-6 rounded-2xl border border-green-500/30 bg-green-500/10 hover:bg-green-500/20 transition-all flex flex-col items-center gap-4 relative overflow-hidden"
+                        >
+                             <div className="absolute inset-0 bg-green-500/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+                             <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center text-green-400 group-hover:scale-110 transition-transform">
+                                <ArrowRight size={24} />
+                            </div>
+                            <div className="text-lg font-bold text-green-100">Next Play Type</div>
+                            <div className="text-xs text-green-200/40">Jump to the next category</div>
+                        </button>
+                    </div>
+                </GlassCard>
+            </motion.div>
+        )}
+      </AnimatePresence>
 
       <DashboardPanel 
         film={leftFilm} 
@@ -229,9 +346,67 @@ const PresenterView: React.FC = () => {
         onNext={() => nextFilm('right')}
         side="right"
       />
-      
-      {/* Overlay QR Code Widget */}
-      <JoinWidget />
+
+      {/* Main Controls - Center Bottom */}
+      <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-4">
+        
+        {/* QR Code - Bottom Middle (Large) */}
+        {qrUrl && (
+            <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white p-2 rounded-xl shadow-2xl mb-4 flex flex-col items-center"
+            >
+                <img src={qrUrl} alt="Join" className="w-40 h-40 object-contain" />
+                <span className="text-black font-bold text-[10px] tracking-widest uppercase mt-1">Scan to Vote</span>
+            </motion.div>
+        )}
+
+        <GlassCard className="p-2 flex items-center gap-2 !rounded-2xl !bg-black/90 !border-white/20">
+            <button
+                onClick={handleMainAction}
+                className={`
+                    px-8 py-4 rounded-xl font-bold uppercase tracking-widest transition-all hover:scale-105 active:scale-95 shadow-lg flex items-center gap-3
+                    ${isRoundStarted
+                        ? 'bg-gradient-to-r from-gray-700 to-gray-600 hover:from-gray-600 hover:to-gray-500 text-white shadow-gray-900/50' 
+                        : 'bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white shadow-blue-900/50 animate-pulse'
+                    }
+                `}
+            >
+                {isRoundStarted ? <ArrowRight size={18} /> : <Timer size={18} />}
+                <span>{isRoundStarted ? 'Next Pair' : 'Start Round (2m)'}</span>
+            </button>
+        </GlassCard>
+     </div>
+
+     {/* Admin Controls - Bottom Right */}
+     <div className="fixed bottom-8 right-8 z-40">
+        <GlassCard className="p-2 flex items-center gap-2 !rounded-2xl !bg-black/90 !border-white/20">
+            {/* Go Home */}
+            <button 
+                onClick={() => window.location.hash = '#'}
+                className="p-3 rounded-xl hover:bg-white/10 text-white/50 hover:text-white transition-colors flex items-center gap-2 group"
+                title="Go to Start Screen"
+            >
+                <Home size={20} />
+            </button>
+
+            <div className="w-px h-8 bg-white/10" />
+
+            {/* Reset */}
+            <button 
+                onClick={() => {
+                    if(confirm("WARNING: This will RESET the entire session, going back to the first pair and DELETING all votes. Are you sure?")) resetSession();
+                }}
+                className="px-4 py-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-colors flex items-center gap-2"
+                title="Reset Session"
+            >
+                <RotateCcw size={18} />
+                <span className="text-xs font-bold uppercase tracking-wider">Reset Session</span>
+            </button>
+        </GlassCard>
+     </div>
+
     </div>
   );
 };

@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { ref, onValue, set, push, update } from 'firebase/database';
 import { signInAnonymously } from 'firebase/auth';
-import { db, auth } from '../src/firebase'; // Import from the file we just created
+import { db, auth } from '../src/firebase';
 import { PollingContextType, PollingState, Vote } from '../types';
 import { FILMS, INITIAL_STATE } from '../constants';
 
@@ -13,18 +13,13 @@ export const PollingProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // 1. Connect to Firebase and Listen for Changes
   useEffect(() => {
-    // Sign in anonymously so we have permission to read/write
     signInAnonymously(auth).then(() => {
-        
-      // Listen to the 'session' object in the database
       const sessionRef = ref(db, 'session');
       
       const unsubscribe = onValue(sessionRef, (snapshot) => {
         const data = snapshot.val();
         
         if (data) {
-          // If data exists in cloud, sync it to our app
-          // We handle votes separately because they are a list
           const votesList = data.votes ? Object.values(data.votes) : [];
           setState({
             ...data,
@@ -32,10 +27,9 @@ export const PollingProvider: React.FC<{ children: React.ReactNode }> = ({ child
           });
           setIsConnected(true);
         } else {
-          // If database is empty (first run), upload our INITIAL_STATE
           set(sessionRef, {
              ...INITIAL_STATE,
-             votes: {} // Empty object for votes in DB
+             votes: {}
           });
           setIsConnected(true);
         }
@@ -53,7 +47,6 @@ export const PollingProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // Action: Voter submits a vote
   const submitVote = useCallback((vote: Vote) => {
-    // Push a new entry to the 'session/votes' list in the database
     const votesRef = ref(db, 'session/votes');
     push(votesRef, vote);
   }, []);
@@ -64,13 +57,22 @@ export const PollingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const currentIndex = FILMS.findIndex(f => f.id === currentId);
     const nextIndex = (currentIndex + 1) % FILMS.length;
     
-    // Update the specific field in the cloud
     update(ref(db, 'session'), {
         [side === 'left' ? 'leftFilmId' : 'rightFilmId']: FILMS[nextIndex].id
     });
   }, [state.leftFilmId, state.rightFilmId]);
 
-  // Action: Presenter changes both films
+  // Action: Start current round (Reset timer for current pair)
+  const startRound = useCallback(() => {
+    const newEndTime = Date.now() + 120000;
+    update(ref(db, 'session'), {
+        roundEndsAt: newEndTime,
+        isLocked: false
+    });
+  }, []);
+
+  // Action: Presenter changes both films. 
+  // CHANGED: Does NOT auto-start timer. Sets to locked.
   const nextPair = useCallback(() => {
     const leftIndex = FILMS.findIndex(f => f.id === state.leftFilmId);
     const rightIndex = FILMS.findIndex(f => f.id === state.rightFilmId);
@@ -80,24 +82,52 @@ export const PollingProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     update(ref(db, 'session'), {
         leftFilmId: FILMS[nextLeftIndex].id,
-        rightFilmId: FILMS[nextRightIndex].id
+        rightFilmId: FILMS[nextRightIndex].id,
+        roundEndsAt: null, // Reset timer
+        isLocked: true     // Lock voting until Presenter clicks Start
     });
   }, [state.leftFilmId, state.rightFilmId]);
 
+  // Action: Jump to next category
+  // CHANGED: Does NOT auto-start timer. Sets to locked.
+  const jumpToNextCategory = useCallback(() => {
+    const currentCategory = leftFilm.category;
+    let nextIndex = FILMS.findIndex(f => f.id === state.leftFilmId);
+    
+    // Find first film with different category
+    while(nextIndex < FILMS.length && FILMS[nextIndex].category === currentCategory) {
+        nextIndex++;
+    }
+    
+    // If we ran out of films, cycle back to 0 or stay at end
+    if (nextIndex >= FILMS.length) nextIndex = 0;
+
+    // Ensure we have a pair (even index)
+    if (nextIndex % 2 !== 0) nextIndex--;
+
+    update(ref(db, 'session'), {
+        leftFilmId: FILMS[nextIndex].id,
+        rightFilmId: FILMS[nextIndex + 1]?.id || FILMS[0].id,
+        roundEndsAt: null, // Reset timer
+        isLocked: true     // Lock voting
+    });
+
+  }, [state.leftFilmId, leftFilm.category]);
+
   // Action: Reset everything
   const resetSession = useCallback(() => {
+    // Explicitly set structure and use null for votes to delete the node
     set(ref(db, 'session'), {
-        ...INITIAL_STATE,
-        votes: {}
-    });
+        leftFilmId: FILMS[0].id,
+        rightFilmId: FILMS[1].id,
+        votes: null,
+        isLocked: true, // Start locked
+        roundEndsAt: null,
+    }).catch(err => console.error("Reset failed", err));
   }, []);
 
-  if (!isConnected && state === INITIAL_STATE) {
-      // Optional: Show a loading state if needed, but for now we just render
-  }
-
   return (
-    <PollingContext.Provider value={{ state, leftFilm, rightFilm, submitVote, nextFilm, nextPair, resetSession, isConnected }}>
+    <PollingContext.Provider value={{ state, leftFilm, rightFilm, submitVote, nextFilm, nextPair, startRound, jumpToNextCategory, resetSession, isConnected }}>
       {children}
     </PollingContext.Provider>
   );

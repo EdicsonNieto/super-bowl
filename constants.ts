@@ -115,9 +115,28 @@ export const FILMS: Film[] = [
   }
 ];
 
+export const ANIMALS = [
+  { name: 'Kitsune', kanji: '狐', icon: '🦊' },
+  { name: 'Tanuki', kanji: '狸', icon: '🦝' },
+  { name: 'Neko', kanji: '猫', icon: '🐱' },
+  { name: 'Inu', kanji: '犬', icon: '🐶' },
+  { name: 'Saru', kanji: '猿', icon: '🐵' },
+  { name: 'Tora', kanji: '虎', icon: '🐯' },
+  { name: 'Kuma', kanji: '熊', icon: '🐻' },
+  { name: 'Usagi', kanji: '兎', icon: '🐰' },
+  { name: 'Tatsu', kanji: '竜', icon: '🐉' },
+  { name: 'Hebi', kanji: '蛇', icon: '🐍' },
+  { name: 'Uma', kanji: '馬', icon: '🐴' },
+  { name: 'Hitsuji', kanji: '羊', icon: '🐑' },
+  { name: 'Inoshishi', kanji: '猪', icon: '🐗' },
+  { name: 'Nezumi', kanji: '鼠', icon: '🐭' },
+  { name: 'Ushi', kanji: '牛', icon: '🐮' },
+];
+
 export const INITIAL_STATE = {
   leftFilmId: FILMS[0].id,
   rightFilmId: FILMS[1].id,
   votes: [],
   isLocked: false,
+  roundEndsAt: null,
 };

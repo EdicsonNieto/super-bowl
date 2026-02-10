@@ -275,26 +275,6 @@ const PresenterView: React.FC = () => {
   return (
     <div className="w-full min-h-screen bg-black text-white font-sans flex flex-col md:flex-row relative">
       
-      {/* Timer Bar - Always Visible when running */}
-      <AnimatePresence>
-        {timeLeft !== null && timeLeft > 0 && (
-            <motion.div 
-                initial={{ y: -50, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                exit={{ y: -50, opacity: 0 }}
-                className="fixed top-0 left-1/2 -translate-x-1/2 z-[200] flex justify-center pt-2 pointer-events-none"
-            >
-                <div className={`
-                    flex items-center gap-3 px-8 py-3 rounded-b-2xl text-xl font-bold tracking-widest border-b border-x backdrop-blur-xl shadow-2xl transition-all
-                    ${timeLeft <= 10 ? 'bg-red-600/90 border-red-500 text-white animate-pulse' : 'bg-black/80 border-white/30 text-white'}
-                `}>
-                    <Clock size={20} />
-                    <span className="font-mono text-2xl">{formatTime(timeLeft)}</span>
-                </div>
-            </motion.div>
-        )}
-      </AnimatePresence>
-
       <AnimatePresence>
         {showEndModal && (
             <motion.div 
@@ -353,6 +333,27 @@ const PresenterView: React.FC = () => {
       />
 
       <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-4">
+        
+        {/* Timer - Positioned above QR Code */}
+        <AnimatePresence>
+            {timeLeft !== null && timeLeft > 0 && (
+                <motion.div 
+                    initial={{ scale: 0.9, opacity: 0, y: 10 }}
+                    animate={{ scale: 1, opacity: 1, y: 0 }}
+                    exit={{ scale: 0.9, opacity: 0, y: 10 }}
+                    className="flex justify-center mb-1 pointer-events-none"
+                >
+                    <div className={`
+                        flex items-center gap-3 px-6 py-3 rounded-2xl text-xl font-bold tracking-widest border backdrop-blur-xl shadow-[0_0_15px_rgba(0,0,0,0.5)] transition-all
+                        ${timeLeft <= 10 ? 'bg-red-600/90 border-red-500 text-white animate-pulse' : 'bg-black/80 border-white/30 text-white'}
+                    `}>
+                        <Clock size={20} />
+                        <span className="font-mono text-2xl">{formatTime(timeLeft)}</span>
+                    </div>
+                </motion.div>
+            )}
+        </AnimatePresence>
+
         {qrUrl && (
             <motion.div 
                 initial={{ opacity: 0, y: 20 }}

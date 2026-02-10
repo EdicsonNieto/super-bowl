@@ -248,6 +248,14 @@ const VoterView: React.FC = () => {
       setIdentity(getVoterIdentity());
   }, []);
 
+  // Sync viewState with Session State
+  // If the session is NOT finished (presenter reset it), force view back to voting
+  useEffect(() => {
+    if (!state.isFinished && viewState === 'results') {
+      setViewState('voting');
+    }
+  }, [state.isFinished, viewState]);
+
   // Timer Logic: Safe handling of undefined/null values
   useEffect(() => {
     if (!state.roundEndsAt) {

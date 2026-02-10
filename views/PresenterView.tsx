@@ -6,7 +6,7 @@ import { GlassCard } from '../components/ui/GlassCard';
 import { Sparkline } from '../components/ui/Sparkline';
 import { ResultsDashboard } from '../components/ResultsDashboard';
 import { Film } from '../types';
-import { FILMS } from '../constants';
+import { FILMS, ROUND_DURATION_MS } from '../constants';
 
 interface DashboardPanelProps {
   film: Film;
@@ -266,6 +266,12 @@ const PresenterView: React.FC = () => {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const durationText = useMemo(() => {
+     const mins = Math.floor(ROUND_DURATION_MS / 60000);
+     const secs = ((ROUND_DURATION_MS % 60000) / 1000).toFixed(0).padStart(2, '0');
+     return `${mins}:${secs}`;
+  }, []);
+
   const handleNextPlayType = () => {
       jumpToNextCategory();
       setShowEndModal(false);
@@ -392,7 +398,7 @@ const PresenterView: React.FC = () => {
                 ) : (
                     <ArrowRight size={20} />
                 )}
-                <span>{!isRoundStarted ? 'Start Round (2:00)' : isLastPair ? 'Show Results' : 'Next Pair'}</span>
+                <span>{!isRoundStarted ? `Start Round (${durationText})` : isLastPair ? 'Show Results' : 'Next Pair'}</span>
             </button>
         </GlassCard>
      </div>

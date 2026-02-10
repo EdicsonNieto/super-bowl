@@ -3,7 +3,7 @@ import { ref, onValue, set, push, update } from 'firebase/database';
 import { signInAnonymously } from 'firebase/auth';
 import { db, auth } from '../src/firebase';
 import { PollingContextType, PollingState, Vote } from '../types';
-import { FILMS, INITIAL_STATE } from '../constants';
+import { FILMS, INITIAL_STATE, ROUND_DURATION_MS } from '../constants';
 
 const PollingContext = createContext<PollingContextType | undefined>(undefined);
 
@@ -64,7 +64,7 @@ export const PollingProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // Action: Start current round (Reset timer for current pair)
   const startRound = useCallback(() => {
-    const newEndTime = Date.now() + 120000;
+    const newEndTime = Date.now() + ROUND_DURATION_MS;
     update(ref(db, 'session'), {
         roundEndsAt: newEndTime,
         isLocked: false

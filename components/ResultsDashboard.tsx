@@ -43,7 +43,7 @@ export const ResultsDashboard: React.FC<{ isPresenter?: boolean }> = ({ isPresen
                     <div className="pt-8 flex flex-col gap-4 w-full items-center">
                          <button 
                              onClick={() => {
-                                 if(confirm("Reset session and start over?")) {
+                                 if(confirm("Are you sure? This will delete all voting data from the database and start a fresh session.")) {
                                      resetSession();
                                      setShowSplash(false);
                                  }
@@ -137,7 +137,7 @@ export const ResultsDashboard: React.FC<{ isPresenter?: boolean }> = ({ isPresen
 
                      <button 
                         onClick={() => {
-                            if(confirm("WARNING: This will RESET the entire session. Are you sure?")) resetSession();
+                            if(confirm("WARNING: This will delete the entire database and reset for a fresh session. Are you sure?")) resetSession();
                         }} 
                         className="w-full md:w-auto px-8 py-4 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-colors uppercase tracking-widest font-bold border border-red-500/20 flex items-center justify-center gap-3"
                      >
@@ -168,7 +168,7 @@ export const ResultsDashboard: React.FC<{ isPresenter?: boolean }> = ({ isPresen
 
                 <button 
                     onClick={() => {
-                        if(confirm("WARNING: This will RESET the entire session, going back to the first pair and DELETING all votes. Are you sure?")) resetSession();
+                        if(confirm("WARNING: This will RESET the entire session and DELETE all database votes. Are you sure?")) resetSession();
                     }}
                     className="px-4 py-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-colors flex items-center gap-2"
                     title="Reset Session"

@@ -1,5 +1,7 @@
 import { Film } from './types';
 
+export const ROUND_DURATION_MS = 120000; // 2 Minutes
+
 export const FILMS: Film[] = [
   {
     id: 'f1',
@@ -91,11 +93,11 @@ export const FILMS: Film[] = [
   },
   {
     id: 'f12',
-    title: 'Instacart – “Bananas”',
+    title: 'Pokemon: "What’s Your Favorite?"',
     subtitle: 'Super Bowl 2026',
     category: 'PLAY TYPE 6 - “CELEBRITY ATTACK“',
     year: '2026',
-    coverImage: 'https://i.imgur.com/Zo5BGNm.png',
+    coverImage: 'https://i.imgur.com/awiyErS.png',
   },
   {
     id: 'f13',

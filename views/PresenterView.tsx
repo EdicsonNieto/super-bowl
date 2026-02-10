@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Users, ThumbsUp, Star, Check, X, ScanLine, Clock, ArrowRight, BarChart2, RotateCcw, Home, Timer } from 'lucide-react';
+import { Play, Users, Check, X, ScanLine, Clock, ArrowRight, BarChart2, RotateCcw, Home, Timer, Star } from 'lucide-react';
 import { usePolling } from '../context/PollingContext';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Sparkline } from '../components/ui/Sparkline';
@@ -14,13 +14,11 @@ interface DashboardPanelProps {
 }
 
 const DashboardPanel: React.FC<DashboardPanelProps> = ({ film, votes, onNext, side }) => {
-  // Filter votes for this specific film
   const currentVotes = useMemo(() => 
-    votes.filter(v => v.filmId === film.id),
+    (votes || []).filter(v => v.filmId === film.id),
     [votes, film.id]
   );
 
-  // Calculate Metrics
   const avgRating = useMemo(() => {
     if (currentVotes.length === 0) return 0;
     const total = currentVotes.reduce((acc, v) => acc + v.stars, 0);
@@ -41,7 +39,6 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ film, votes, onNext, si
       return currentVotes.map((v, i) => ({ index: i, value: v.stars }));
   }, [currentVotes]);
 
-  // Show all recent votes, not just comments
   const recentActivity = useMemo(() => 
     currentVotes.slice(-6).reverse(),
     [currentVotes]
@@ -49,7 +46,6 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ film, votes, onNext, si
 
   return (
     <div className="relative w-full md:w-1/2 min-h-screen md:h-full flex flex-col overflow-hidden border-b md:border-b-0 md:border-r border-white/10 last:border-none">
-       {/* Background Layer */}
        <div className="absolute inset-0 z-0">
         <img 
           src={film.coverImage}
@@ -61,8 +57,6 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ film, votes, onNext, si
       </div>
 
       <div className="relative z-10 flex flex-col h-full p-6 md:p-8">
-        
-        {/* Header Control */}
         <div className="flex items-start justify-between mb-6 md:mb-8 overflow-hidden">
             <div className="min-w-0 flex-1 mr-4">
                 <h3 className="text-blue-300 font-bold tracking-widest uppercase text-xs mb-1 drop-shadow-md">
@@ -75,7 +69,6 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ film, votes, onNext, si
             </div>
         </div>
 
-        {/* Stats Grid - 3 Columns */}
         <div className="grid grid-cols-3 gap-3 mb-6">
             <GlassCard className="p-3 flex flex-col justify-between h-20">
                 <div className="flex justify-between items-start mb-1">
@@ -102,7 +95,6 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ film, votes, onNext, si
             </GlassCard>
         </div>
 
-        {/* Main Rating Large */}
         <GlassCard className="mb-6 p-6 flex items-center justify-between">
             <div>
                 <div className="flex items-baseline gap-2">
@@ -120,7 +112,6 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ film, votes, onNext, si
             </div>
         </GlassCard>
 
-        {/* Live Activity Feed */}
         <div className="flex-1 overflow-hidden flex flex-col min-h-[200px] mb-32 md:mb-0">
             <h3 className="text-xs font-bold tracking-widest uppercase text-white/60 mb-3 flex items-center gap-2 drop-shadow">
                 <ScanLine size={12} /> Live Activity
@@ -136,7 +127,6 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ film, votes, onNext, si
                             layout
                             className="bg-white/10 border border-white/10 p-3 rounded-lg shadow-sm"
                         >
-                            {/* Vote Header: Identity + Timestamp */}
                             <div className="flex justify-between items-start mb-2 pb-2 border-b border-white/5">
                                 <div className="flex items-center gap-2">
                                     <div className="w-7 h-7 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-sm shadow-inner">
@@ -163,7 +153,6 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ film, votes, onNext, si
                                 </span>
                             </div>
 
-                            {/* Vote Content: Stars + Status */}
                             <div className="flex justify-between items-center mb-1">
                                 <div className="flex gap-0.5">
                                     {[...Array(vote.stars)].map((_, i) => (
@@ -186,7 +175,6 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ film, votes, onNext, si
                                 </div>
                             </div>
                             
-                            {/* Comment */}
                             {vote.comment ? (
                                 <p className="text-xs text-white font-medium leading-snug drop-shadow-sm mt-1">"{vote.comment}"</p>
                             ) : (
@@ -209,43 +197,63 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ film, votes, onNext, si
 };
 
 const PresenterView: React.FC = () => {
-  const { leftFilm, rightFilm, state, nextFilm, nextPair, startRound, jumpToNextCategory, resetSession, isConnected } = usePolling();
+  const { leftFilm, rightFilm, state, nextFilm, nextPair, startRound, jumpToNextCategory, resetSession } = usePolling();
   
-  // Local Timer State
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [showEndModal, setShowEndModal] = useState(false);
   const [qrUrl, setQrUrl] = useState('');
 
-  // Sync Timer with Context
+  // Determine if a round is currently active/started
+  // Important: Check for truthiness or typeof number, as Firebase deletion results in undefined
+  const isRoundStarted = useMemo(() => {
+    return typeof state.roundEndsAt === 'number' && state.roundEndsAt > 0;
+  }, [state.roundEndsAt]);
+
   useEffect(() => {
-      if (!state.roundEndsAt) {
+      // Logic: If round is NOT started (undefined/null), reset timer and return
+      if (!isRoundStarted) {
           setTimeLeft(null);
+          setShowEndModal(false);
           return;
       }
 
-      const interval = setInterval(() => {
-          const remaining = Math.max(0, Math.ceil((state.roundEndsAt! - Date.now()) / 1000));
-          setTimeLeft(remaining);
+      const updateTimer = () => {
+          const now = Date.now();
+          const diff = (state.roundEndsAt || 0) - now;
+          const remaining = Math.max(0, Math.ceil(diff / 1000));
           
+          setTimeLeft(remaining);
+          return remaining;
+      };
+
+      // Initial check
+      const initialRemaining = updateTimer();
+      
+      // If time is up, show modal
+      if (initialRemaining <= 0) {
+          setShowEndModal(true);
+      } else {
+          setShowEndModal(false);
+      }
+
+      const interval = setInterval(() => {
+          const remaining = updateTimer();
           if (remaining <= 0) {
               clearInterval(interval);
-              setShowEndModal(true); // Trigger modal when time hits 0
-          } else {
-              setShowEndModal(false); // Ensure modal is closed if timer resets
+              setShowEndModal(true);
           }
       }, 1000);
 
       return () => clearInterval(interval);
-  }, [state.roundEndsAt]);
+  }, [state.roundEndsAt, isRoundStarted]);
 
-  // Generate QR Code
   useEffect(() => {
       const voteUrl = window.location.origin + window.location.pathname + '#/vote';
-      // Increased size to 300x300 for better resolution when displayed large
       setQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=300x300&bgcolor=000000&color=ffffff&data=${encodeURIComponent(voteUrl)}`);
   }, []);
 
   const formatTime = (seconds: number) => {
+    if (isNaN(seconds)) return "0:00";
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
@@ -256,17 +264,10 @@ const PresenterView: React.FC = () => {
       setShowEndModal(false);
   };
 
-  // State Derivation
-  // Round Started: Timer is running (or ended at 0)
-  // Waiting: Timer is null
-  const isRoundStarted = state.roundEndsAt !== null;
-  const isRoundActive = timeLeft !== null && timeLeft > 0;
-  
   const handleMainAction = () => {
       if (!isRoundStarted) {
           startRound();
       } else {
-          // If round is running or finished, Next Pair moves to next and resets timer (stops)
           nextPair();
       }
   };
@@ -274,20 +275,26 @@ const PresenterView: React.FC = () => {
   return (
     <div className="w-full min-h-screen bg-black text-white font-sans flex flex-col md:flex-row relative">
       
-      {/* Timer Bar */}
-      {timeLeft !== null && timeLeft > 0 && (
-         <div className="absolute top-0 inset-x-0 z-50 flex justify-center pt-2 pointer-events-none">
-            <div className={`
-                flex items-center gap-3 px-6 py-2 rounded-b-2xl text-sm font-bold tracking-widest border-b border-x backdrop-blur-md shadow-2xl transition-all
-                ${timeLeft <= 10 ? 'bg-red-500/80 border-red-500 text-white animate-pulse' : 'bg-black/60 border-white/20 text-white'}
-            `}>
-                <Clock size={16} />
-                <span className="font-mono text-lg">{formatTime(timeLeft)}</span>
-            </div>
-        </div>
-      )}
+      {/* Timer Bar - Always Visible when running */}
+      <AnimatePresence>
+        {timeLeft !== null && timeLeft > 0 && (
+            <motion.div 
+                initial={{ y: -50, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: -50, opacity: 0 }}
+                className="fixed top-0 left-1/2 -translate-x-1/2 z-[200] flex justify-center pt-2 pointer-events-none"
+            >
+                <div className={`
+                    flex items-center gap-3 px-8 py-3 rounded-b-2xl text-xl font-bold tracking-widest border-b border-x backdrop-blur-xl shadow-2xl transition-all
+                    ${timeLeft <= 10 ? 'bg-red-600/90 border-red-500 text-white animate-pulse' : 'bg-black/80 border-white/30 text-white'}
+                `}>
+                    <Clock size={20} />
+                    <span className="font-mono text-2xl">{formatTime(timeLeft)}</span>
+                </div>
+            </motion.div>
+        )}
+      </AnimatePresence>
 
-      {/* End of Round Modal */}
       <AnimatePresence>
         {showEndModal && (
             <motion.div 
@@ -304,7 +311,6 @@ const PresenterView: React.FC = () => {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
-                         {/* Show Results (Closes Modal to reveal dashboard) */}
                         <button 
                             onClick={() => setShowEndModal(false)}
                             className="group p-6 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all flex flex-col items-center gap-4"
@@ -316,7 +322,6 @@ const PresenterView: React.FC = () => {
                             <div className="text-xs text-white/40">Review the data on the dashboard</div>
                         </button>
 
-                        {/* Go to Next Play Type */}
                         <button 
                              onClick={handleNextPlayType}
                              className="group p-6 rounded-2xl border border-green-500/30 bg-green-500/10 hover:bg-green-500/20 transition-all flex flex-col items-center gap-4 relative overflow-hidden"
@@ -347,10 +352,7 @@ const PresenterView: React.FC = () => {
         side="right"
       />
 
-      {/* Main Controls - Center Bottom */}
       <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-4">
-        
-        {/* QR Code - Bottom Middle (Large) */}
         {qrUrl && (
             <motion.div 
                 initial={{ opacity: 0, y: 20 }}
@@ -367,22 +369,20 @@ const PresenterView: React.FC = () => {
                 onClick={handleMainAction}
                 className={`
                     px-8 py-4 rounded-xl font-bold uppercase tracking-widest transition-all hover:scale-105 active:scale-95 shadow-lg flex items-center gap-3
-                    ${isRoundStarted
-                        ? 'bg-gradient-to-r from-gray-700 to-gray-600 hover:from-gray-600 hover:to-gray-500 text-white shadow-gray-900/50' 
-                        : 'bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white shadow-blue-900/50 animate-pulse'
+                    ${!isRoundStarted
+                        ? 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-emerald-500 hover:to-emerald-400 text-white shadow-green-900/50 animate-pulse' 
+                        : 'bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white shadow-blue-900/50'
                     }
                 `}
             >
-                {isRoundStarted ? <ArrowRight size={18} /> : <Timer size={18} />}
-                <span>{isRoundStarted ? 'Next Pair' : 'Start Round (2m)'}</span>
+                {!isRoundStarted ? <Play size={20} fill="currentColor" /> : <ArrowRight size={20} />}
+                <span>{!isRoundStarted ? 'Start Round (2:00)' : 'Next Pair'}</span>
             </button>
         </GlassCard>
      </div>
 
-     {/* Admin Controls - Bottom Right */}
      <div className="fixed bottom-8 right-8 z-40">
         <GlassCard className="p-2 flex items-center gap-2 !rounded-2xl !bg-black/90 !border-white/20">
-            {/* Go Home */}
             <button 
                 onClick={() => window.location.hash = '#'}
                 className="p-3 rounded-xl hover:bg-white/10 text-white/50 hover:text-white transition-colors flex items-center gap-2 group"
@@ -393,7 +393,6 @@ const PresenterView: React.FC = () => {
 
             <div className="w-px h-8 bg-white/10" />
 
-            {/* Reset */}
             <button 
                 onClick={() => {
                     if(confirm("WARNING: This will RESET the entire session, going back to the first pair and DELETING all votes. Are you sure?")) resetSession();
@@ -406,7 +405,6 @@ const PresenterView: React.FC = () => {
             </button>
         </GlassCard>
      </div>
-
     </div>
   );
 };
